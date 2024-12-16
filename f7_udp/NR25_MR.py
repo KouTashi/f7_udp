@@ -6,14 +6,14 @@ RRST NHK2025
 汎用機の機構制御
 
 2024/12/13: クラス名の変更、機構制御の関数化、GUI連携、大規模な修正のため実機テスト注意
-TODO: 配列dataの拡張
+2024/12/16: 配列dataの拡張
 TODO: MD出力のPublish(デバッグ用)
 TODO: ds4drvの代替手段の選定
 TODO: pyfiglet未インストール時の例外処理
 """
 
 # Falseにすることでルーター未接続でもデバッグ可能、Trueへの戻し忘れに注意
-# 追加: アドレスのバインドに失敗すると自動でオフラインモードで開始される機能を実装
+# 実装済み: アドレスのバインドに失敗すると自動でオフラインモードで開始される
 ONLINE_MODE = True
 
 # パラメーター調整モード、GUIでのパラメーター変更を有効化
@@ -35,8 +35,46 @@ import math
 # 以下pipでのインストールが必要
 import pyfiglet
 
-data = [0, 0, 0, 0, 0, 0, -1, -1, -1]  # 各モーターの出力（0% ~ 100%）
-# 6, 7, 8, を電磁弁制御に割り当て
+data = [
+    0,  # 未使用、送信もされないので注意
+    0,  # MD1(0% ~ 100%)
+    0,  # MD2(0% ~ 100%)
+    0,  # MD3(0% ~ 100%)
+    0,  # MD4(0% ~ 100%)
+    0,  # MD5(0% ~ 100%)
+    0,  # MD6(0% ~ 100%)
+    0,  # MD7(0% ~ 100%)
+    0,  # MD8(0% ~ 100%)
+    -1,  # サーボ1 or 電磁弁1(0 ~ 360)or(0,1)
+    -1,  # サーボ2 or 電磁弁2(0 ~ 360)or(0,1)
+    -1,  # サーボ3 or 電磁弁3(0 ~ 360)or(0,1)
+    -1,  # サーボ4 or 電磁弁4(0 ~ 360)or(0,1)
+    0,  # パイロットランプ1(0,1)
+    0,  # パイロットランプ2(0,1)
+    0,  # その他通信(0 ~ 999)
+    0,  # その他通信(0 ~ 999)
+]
+
+"""
+割り当て表
+data[0] 	N/A
+data[1] 	MD1
+data[2] 	MD2
+data[3] 	MD3
+data[4] 	MD4
+data[5] 	MD5
+data[6] 	MD6
+data[7] 	未割当
+data[8] 	未割当
+data[9] 	電磁弁1
+data[10] 	電磁弁2
+data[11] 	電磁弁3
+data[12] 	未割当
+data[13] 	未割当
+data[14] 	未割当
+data[15] 	未割当
+data[16] 	未割当
+"""
 
 duty_max = 80
 sp_yaw = 0.1
@@ -103,9 +141,9 @@ class Listener(Node):
             data[3] = 0
             data[4] = 0
             data[5] = 0
-            data[6] = -1
-            data[7] = -1
-            data[8] = -1
+            data[9] = -1
+            data[10] = -1
+            data[11] = -1
             udp.send()  # UDPで送信
             time.sleep(1)
             while True:
@@ -176,8 +214,8 @@ class Action:  # 機構制御関数を格納するクラス
     def ready_for_shoot():
         global ready_for_shoot
         print("Ready for Shooting...")
-        data[6] = 1
-        data[8] = 1
+        data[9] = 1
+        data[11] = 1
         data[1] = -1 * roller_speed_shoot_ab
         data[2] = -1 * roller_speed_shoot_ab
         data[3] = roller_speed_shoot_cd
@@ -190,17 +228,17 @@ class Action:  # 機構制御関数を格納するクラス
     def shoot():
         global ready_for_shoot
         print("Shooting...")
-        data[7] = 1
+        data[10] = 1
         udp.send()  # 　UDPで送信
         ready_for_shoot = False
         time.sleep(1.0)
         print("Ready for Retraction...")
-        data[7] = -1
+        data[10] = -1
         udp.send()  # 　UDPで送信
         time.sleep(1.0)
         print("Retracting....")
-        data[6] = -1
-        data[8] = -1
+        data[9] = -1
+        data[11] = -1
         data[1] = 0
         data[2] = 0
         data[3] = 0
@@ -211,14 +249,14 @@ class Action:  # 機構制御関数を格納するクラス
     # ドリブル
     def dribble():
         print("Dribbling...")
-        data[8] = 1
+        data[11] = 1
         data[1] = roller_speed_dribble_ab
         data[2] = roller_speed_dribble_ab
         data[3] = -1 * roller_speed_dribble_cd
         data[4] = -1 * roller_speed_dribble_cd
         udp.send()  # UDPで送信
         time.sleep(6.0)
-        data[8] = -1
+        data[11] = -1
         data[1] = 0
         data[2] = 0
         data[3] = 0
@@ -248,31 +286,16 @@ class UDP:  # UDP通信のクラス
     def send(self):
 
         # print(data[1], data[2], data[3], data[4])
-
-        # Duty比のリミッター、消すな！
+        """
+        配列拡張に伴い一時的に無効化 
+        # Duty比のリミッター、消すな! 
         for i in range(len(data)):
             if data[i] > duty_max:
                 data[i] = duty_max
             elif data[i] < -duty_max:
                 data[i] = -duty_max
-
-        str_data = (
-            str(data[1])
-            + ","
-            + str(data[2])
-            + ","
-            + str(data[3])
-            + ","
-            + str(data[4])
-            + ","
-            + str(data[5])
-            + ","
-            + str(data[6])
-            + ","
-            + str(data[7])
-            + ","
-            + str(data[8])
-        )  # パケットを作成
+        """
+        str_data = ",".join(map(str, data[1:17]))  # パケットを作成、配列要素をstr型にキャストしてカンマ区切りで結合
 
         print(str_data)
 
@@ -281,6 +304,7 @@ class UDP:  # UDP通信のクラス
         if ONLINE_MODE:
             self.udpClntSock.sendto(send_data, self.DstAddr)  # 宛先アドレスに送信
 
+        #機構制御なので初期化は無効化
         # data[1] = 0
         # data[2] = 0
         # data[3] = 0
