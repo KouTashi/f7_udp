@@ -56,7 +56,7 @@ class Listener(Node):
         self.subscription  # prevent unused variable warning
 
     def listener_callback(self, ps4_msg):
-        LS_X = -1 * ps4_msg.axes[0]
+        LS_X = -1*ps4_msg.axes[0]
         LS_Y = ps4_msg.axes[1]
         RS_X = (-1) * ps4_msg.axes[3]
         RS_Y = ps4_msg.axes[4]
@@ -85,7 +85,14 @@ class Listener(Node):
 
         L3 = ps4_msg.buttons[11]
         R3 = ps4_msg.buttons[12]
-
+        
+        if (
+            (math.fabs(LS_X) <= deadzone)
+            and (math.fabs(LS_Y) <= deadzone)
+        ):
+            LS_X = 0
+            LS_Y = 0
+    
         # PSボタンで緊急停止
         if PS:
             print(pyfiglet.figlet_format("HALT"))
@@ -97,8 +104,15 @@ class Listener(Node):
 
         rad = math.atan2(LS_Y, LS_X)
         deg = int(rad * 180 / math.pi)
-        if deg < 0:
-            deg = deg + 180
+        
+    
+        
+        if ((-180 <= deg)
+            and(deg <= -135)
+            ):
+            deg= - deg -135
+        else:
+            deg = 225-deg
         print(deg)
 
         data[1] = deg
