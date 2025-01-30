@@ -1,11 +1,12 @@
 from setuptools import find_packages, setup
 
 package_name = 'f7_udp'
+submodules = 'f7_udp/submodules'
 
 setup(
     name=package_name,
     version='0.0.0',
-    packages=find_packages(exclude=['test']),
+    packages=[package_name, submodules],
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -53,6 +54,7 @@ setup(
         'nr25_mr = f7_udp.NR25_MR:main',
         'nr25_dr = f7_udp.NR25_DR:main',
         'nr25_pr_tuner = f7_udp.NR25_param_tuner:main',
+        'nr25_sd = f7_udp.NR25_SwerveDrive:main'
         ],
     },
 )
